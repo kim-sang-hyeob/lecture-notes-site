@@ -43,7 +43,6 @@ const esc = value => String(value).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt
 const fmt = value => esc(value).replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');
 let records = {};
 try {const loaded=JSON.parse(localStorage.getItem(KEY)||'{}');if(loaded && typeof loaded==='object' && !Array.isArray(loaded)) records=loaded;} catch {$('#storage-warning').hidden=false;}
-
 const query = new URLSearchParams(location.search);
 let active = Math.min(6,Math.max(1,Math.trunc(Number(query.get('chapter')))||1)), type='all', mode='all', shuffled=false, order=[];
 if(!BANK.chapters.some(c=>c.chapter===active))active=BANK.chapters[0].chapter;

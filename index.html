@@ -641,10 +641,10 @@ function orgPracticeLinks(chapter = null) {
   const numbered = Number.isInteger(chapter) && chapter >= 1 && chapter <= 6;
   const general = 'practice/org-sdt-300/' + (numbered ? '?chapter=' + chapter : '');
   const recording = 'practice/org-recording-100/' + (numbered && chapter >= 2 ? '?chapter=' + chapter : '');
-  const review = 'practice/org-starred-review/' + (numbered && chapter <= 3 ? '?chapter=' + chapter : '');
+  const review = 'practice/org-starred-review/' + (numbered && chapter <= 2 ? '?chapter=' + chapter : '');
   return `<section class="org-practice" aria-label="조직심리학 문제집"><h3 class="sectionhead">조직심리학 문제 풀기<span class="rule"></span></h3><div class="study-links">
     <a class="study-link" href="${general}"><span><b>족보형 300제${numbered ? ' · ' + chapter + '장' : ''}</b><small>새 1–6장 문제 · O/X 60 · 객관식 150 · 단답형 90 · SDT까지</small></span><span class="arrow" aria-hidden="true">↗</span></a>
-    <a class="study-link" href="${review}"><span><b>기존 별표 복습${numbered && chapter <= 3 ? ' · ' + chapter + '장' : ''}</b><small>기존 1장 8문항·2장 15문항 보관 · 3장은 이 브라우저의 별표만 표시</small></span><span class="arrow" aria-hidden="true">↗</span></a>
+    <a class="study-link" href="${review}"><span><b>기존 별표 복습${numbered && chapter <= 2 ? ' · ' + chapter + '장' : ''}</b><small>기존 1장 8문항·2장 15문항 · 총 23문항과 풀이 기록 보관</small></span><span class="arrow" aria-hidden="true">↗</span></a>
     <a class="study-link" href="${recording}"><span><b>녹음 기반 100제${numbered && chapter >= 2 ? ' · ' + chapter + '장' : ''}</b><small>강조·사례·질의응답에서 찾은 별도 문제 · 녹음 시간·전사 근거 포함</small></span><span class="arrow" aria-hidden="true">↗</span></a>
   </div><p class="org-practice-note">새 300제와 기존 복습, 녹음편의 풀이 기록은 각각 저장됩니다.</p></section>`;
 }
