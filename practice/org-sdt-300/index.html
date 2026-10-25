@@ -30,6 +30,7 @@
 <div class="notice" id="chapter5-star-note" hidden><p id="chapter5-star-status"></p><button type="button" id="chapter5-star-restore">이번에 제외한 5장 문제 복원</button></div>
 <div class="notice" id="easy-prune-note" hidden><p id="easy-prune-status"></p><button type="button" id="easy-prune-restore">이번에 제외한 이 장 문제 복원</button></div>
 <div class="notice" id="review-trim-note" hidden><p id="review-trim-status"></p><button type="button" id="review-trim-restore">이번에 제외한 이 장 문제 복원</button></div>
+<div class="notice" id="chapter3-star-note" hidden><p id="chapter3-star-status"></p><button type="button" id="chapter3-star-restore">이번에 제외한 3장 문제 복원</button></div>
 <div class="controls"><div class="filters" aria-label="문제 형식"><button data-type="all" aria-pressed="true">전체</button><button data-type="ox" aria-pressed="false">O/X</button><button data-type="mcq" aria-pressed="false">객관식</button><button data-type="short" aria-pressed="false">단답형</button></div><label class="sr-only" for="review-mode">풀이 상태 필터</label><select id="review-mode"><option value="all">모든 문제</option><option value="unanswered">아직 안 푼 문제</option><option value="wrong">틀림 · 다시보기</option><option value="marked">표시한 문제</option><option value="chapter5-new" id="chapter5-new-option" hidden>새 5장 40문제</option></select><button id="refresh-list" class="shuffle" hidden>목록 갱신</button><button id="shuffle" class="shuffle" aria-pressed="false">순서 섞기</button></div>
       <div class="list-caption"><span id="list-count"></span><span id="chapter-score" aria-live="polite"></span></div>
       <div id="questions"></div>
@@ -260,6 +261,48 @@ $('#review-trim-restore').addEventListener('click',()=>{
  }catch{$('#storage-warning').hidden=false;}
 });
 
+
+function chapter3StarSelection(questions,attempts,saved){
+ const next={...attempts},before={};
+ const removed=Array.isArray(saved?.removed)?saved.removed:questions.filter(q=>!attempts[q.id]?.marked).map(q=>q.id);
+ if(!saved)for(const q of questions){const r=attempts[q.id];if(!r?.marked)continue;
+   before[q.id]={...r};
+   next[q.id]={...r,selected:null,text:'',result:null,revealed:false,content_revision:r.content_revision||q.content_revision||CONTENT_REVISION};
+ }
+ return {next,before,removed:removed.filter(id=>!attempts[id]?.marked)};
+}
+
+const ch3StarKey=KEY+':chapter3-starred-reset-20261025';
+const ch3StarChapter=BANK.chapters.find(c=>c.chapter===3);
+// Include items hidden by earlier easy-item trims, so restoring an old trim
+// cannot reintroduce unstarred questions after this newer selection.
+const ch3All=JSON.parse(document.getElementById('bank-data').textContent).chapters.find(c=>c.chapter===3).questions.map(q=>q.previous_version&&keepPreviousVersion(records[q.id])?{...q.previous_version,content_revision:LEGACY_REVISION}:q);
+let ch3StarState=null,ch3StarRemoved=0;
+try{
+ ch3StarState=JSON.parse(localStorage.getItem(ch3StarKey)||'null');
+ const selected=chapter3StarSelection(ch3All,records,ch3StarState);
+ if(!ch3StarState){
+   const backup=Object.fromEntries(ch3All.filter(q=>records[q.id]).map(q=>[q.id,records[q.id]]));
+   localStorage.setItem(ch3StarKey+':backup',JSON.stringify(backup));
+   localStorage.setItem(KEY,JSON.stringify(selected.next));records=selected.next;
+   const state={removed:selected.removed,resetCount:Object.keys(selected.before).length,createdAt:new Date().toISOString()};
+   localStorage.setItem(ch3StarKey,JSON.stringify(state));ch3StarState=state;
+ }
+ const count=ch3StarChapter.questions.length;
+ const removed=new Set(selected.removed);
+ ch3StarChapter.questions=ch3StarChapter.questions.filter(q=>!removed.has(q.id));
+ ch3StarRemoved=count-ch3StarChapter.questions.length;
+}catch{$('#storage-warning').hidden=false;ch3StarState=null;}
+BANK.counts={ox:0,mcq:0,short:0,total:0};
+for(const c of BANK.chapters)for(const q of c.questions){BANK.counts[q.type]++;BANK.counts.total++;}
+document.querySelector('.total b').textContent=BANK.counts.total;
+document.querySelectorAll('.stats-row .pill').forEach((n,i)=>{const t=['ox','mcq','short'][i];n.textContent=TYPE[t]+' '+BANK.counts[t];});
+$('#progress').max=BANK.counts.total;
+$('#chapter3-star-restore').addEventListener('click',()=>{
+ try{localStorage.setItem(ch3StarKey,JSON.stringify({...ch3StarState,removed:[],restoredAt:new Date().toISOString()}));location.reload();}
+ catch{$('#storage-warning').hidden=false;}
+});
+
 const query = new URLSearchParams(location.search);
 let active = Math.min(6,Math.max(1,Math.trunc(Number(query.get('chapter')))||1)), type='all', mode='all', shuffled=false, order=[];
 if(!BANK.chapters.some(c=>c.chapter===active))active=BANK.chapters[0].chapter;
@@ -322,7 +365,14 @@ function setChapter(n){
  if(reviewTrimState&&c.chapter===4){
    $('#review-trim-status').textContent=`4장 별표 없는 ${reviewTrimRemoved[4]||0}문항 제외 · ${c.questions.length}문항 유지. 별표 ${reviewTrimState.resetCount||0}문항의 답안을 한 번 초기화했습니다. 다시 푼 답은 저장됩니다.`+(!c.questions.length?' 이 브라우저의 4장 별표는 0개입니다.':'');
  }
- $('#chapter-label').textContent=`CHAPTER 0${c.chapter} / ${c.questions.length} QUESTIONS`;
+
+ $('#chapter3-star-note').hidden=c.chapter!==3||!ch3StarState;
+ $('#chapter3-star-restore').hidden=!ch3StarRemoved;
+ if(c.chapter===3&&ch3StarState){
+   $('#easy-prune-note').hidden=true;$('#review-trim-note').hidden=true;
+   $('#chapter3-star-status').textContent=`3장 별표 없는 ${ch3StarRemoved}문항 제외 · ${c.questions.length}문항 유지. 별표 ${ch3StarState.resetCount||0}문항의 답안을 한 번 초기화했습니다. 다시 푼 답은 저장됩니다.`+(!c.questions.length?' 이 브라우저의 3장 별표는 0개입니다.':'');
+ }
+$('#chapter-label').textContent=`CHAPTER 0${c.chapter} / ${c.questions.length} QUESTIONS`;
  $('#chapter-title').textContent=c.title;
  $('#chapter-scope').textContent=`${c.scope} · O/X ${c.questions.filter(q=>q.type==='ox').length} · 객관식 ${c.questions.filter(q=>q.type==='mcq').length} · 단답형 ${c.questions.filter(q=>q.type==='short').length}`;
  $('#print-questions').href=`chapter-${active}-questions.html`;$('#print-answers').href=`chapter-${active}-answers.html`;$('#study-link').href=c.guide_url;
@@ -342,7 +392,7 @@ function render(){
  document.querySelectorAll('[data-type]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.type===type)));
  const qs=visibleQuestions();$('#list-count').textContent=`${qs.length}문항 표시 · ${mode==='all'?'정답은 풀고 나서 확인':'채점 후 목록 갱신을 누르면 조건을 다시 적용합니다'}`;
  $('#refresh-list').hidden=mode==='all';
- $('#questions').innerHTML=qs.length ? qs.map(card).join('') : ([4,5,6].includes(active)&&!chapter().questions.length?`<div class="empty">이 브라우저에 저장된 ${active}장 별표 문제가 없습니다.<br>필요하면 위의 복원 버튼으로 제외한 문제를 다시 볼 수 있습니다.</div>`:'<div class="empty">이 조건에 해당하는 문제가 없습니다.<br>다른 풀이 상태나 문제 형식을 선택하세요.</div>');
+ $('#questions').innerHTML=qs.length ? qs.map(card).join('') : ([3,4,5,6].includes(active)&&!chapter().questions.length?`<div class="empty">이 브라우저에 저장된 ${active}장 별표 문제가 없습니다.<br>필요하면 위의 복원 버튼으로 제외한 문제를 다시 볼 수 있습니다.</div>`:'<div class="empty">이 조건에 해당하는 문제가 없습니다.<br>다른 풀이 상태나 문제 형식을 선택하세요.</div>');
  updateProgress();
 }
 function statusText(q){const r=record(q);return r.result===true?'✓ 맞힘':r.result===false?'다시보기':q.type==='short'&&r.revealed?'직접 채점 대기':'';}
