@@ -26,6 +26,7 @@
       <section class="chapter-header"><span class="eyebrow" id="chapter-label"></span><h2 id="chapter-title"></h2><p id="chapter-scope"></p><nav class="chapter-links" aria-label="선택한 장 자료"><a id="print-questions" target="_blank">이 장 문제지 ↗</a><a id="print-answers" target="_blank">이 장 정답·해설집 ↗</a><a id="study-link" target="_blank" rel="noopener">기존 정리 읽기 ↗</a></nav></section>
       <p class="notice" id="chapter5-refresh-note" hidden></p>
 <div id="chapter6-cleanup" class="notice" hidden><p id="chapter6-cleanup-note"></p><button id="chapter6-restore" type="button">제외한 6장 문제 복원</button></div>
+<p class="notice" id="starred-reset-note" hidden></p>
 <div class="controls"><div class="filters" aria-label="문제 형식"><button data-type="all" aria-pressed="true">전체</button><button data-type="ox" aria-pressed="false">O/X</button><button data-type="mcq" aria-pressed="false">객관식</button><button data-type="short" aria-pressed="false">단답형</button></div><label class="sr-only" for="review-mode">풀이 상태 필터</label><select id="review-mode"><option value="all">모든 문제</option><option value="unanswered">아직 안 푼 문제</option><option value="wrong">틀림 · 다시보기</option><option value="marked">표시한 문제</option><option value="chapter5-new" id="chapter5-new-option" hidden>새 5장 40문제</option></select><button id="refresh-list" class="shuffle" hidden>목록 갱신</button><button id="shuffle" class="shuffle" aria-pressed="false">순서 섞기</button></div>
       <div class="list-caption"><span id="list-count"></span><span id="chapter-score" aria-live="polite"></span></div>
       <div id="questions"></div>
@@ -112,6 +113,34 @@ $('#chapter6-restore').addEventListener('click',()=>{
   catch{$('#storage-warning').hidden=false;}
 });
 
+
+const starredResetKey=KEY+':starred-5-6-answer-reset-20261025';
+function resetStarredAnswers(attempts, questions){
+  const next={...attempts}, before={};
+  for(const q of questions){
+    const r=attempts[q.id];
+    if(!r?.marked)continue;
+    before[q.id]={...r};
+    next[q.id]={...r,selected:null,text:'',result:null,revealed:false,
+      content_revision:r.content_revision||q.content_revision||CONTENT_REVISION};
+  }
+  return {next,before};
+}
+let starredResetSummary=null;
+try{
+  starredResetSummary=JSON.parse(localStorage.getItem(starredResetKey)||'null');
+  if(!starredResetSummary){
+    const targets=BANK.chapters.filter(c=>c.chapter===5||c.chapter===6).flatMap(c=>c.questions);
+    const reset=resetStarredAnswers(records,targets);
+    const summary={count:Object.keys(reset.before).length,createdAt:new Date().toISOString()};
+    localStorage.setItem(starredResetKey+':backup',JSON.stringify(reset.before));
+    localStorage.setItem(KEY,JSON.stringify(reset.next));
+    records=reset.next;
+    localStorage.setItem(starredResetKey,JSON.stringify(summary));
+    starredResetSummary=summary;
+  }
+}catch{$('#storage-warning').hidden=false;}
+
 const query = new URLSearchParams(location.search);
 let active = Math.min(6,Math.max(1,Math.trunc(Number(query.get('chapter')))||1)), type='all', mode='all', shuffled=false, order=[];
 if(!BANK.chapters.some(c=>c.chapter===active))active=BANK.chapters[0].chapter;
@@ -134,6 +163,11 @@ function setChapter(n){
  active=n;type='all';mode='all';shuffled=false;order=[];
  $('#review-mode').value='all';$('#shuffle').setAttribute('aria-pressed','false');$('#shuffle').textContent='순서 섞기';
  chapterNav();const c=chapter();
+ $('#starred-reset-note').hidden=![5,6].includes(c.chapter)||!starredResetSummary;
+ if(starredResetSummary)$('#starred-reset-note').textContent=starredResetSummary.count
+   ? `5·6장 별표 ${starredResetSummary.count}문항의 답안을 한 번 초기화했습니다. 별표는 유지되며, 다시 푼 답안은 저장됩니다.`
+   : '이 브라우저에는 초기화할 5·6장 별표 문제가 없었습니다.';
+
  $('#chapter6-cleanup').hidden=c.chapter!==6;
  $('#chapter6-restore').hidden=!ch6Removed.length;
  $('#chapter6-cleanup-note').textContent=ch6Removed.length
