@@ -11,10 +11,10 @@
 @media(max-width:850px){.wrap{padding:0 20px}.layout{grid-template-columns:1fr;gap:20px}.sidebar{position:static}.chapters{grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}.chapter-btn{border-color:var(--line);padding:10px}.chapter-btn .t{font-size:12px}.side-progress{display:none}.side-links{display:flex;flex-wrap:wrap;gap:15px;margin-top:13px}.hero{padding-top:28px}.total{padding:22px;min-width:120px}.total b{font-size:42px}.notice{padding-bottom:18px}.chapter-header{padding:23px}.top-note{max-width:160px;text-align:right}}
 @media(max-width:520px){.wrap{padding:0 14px}.hero{gap:12px}h1{font-size:34px}.hero p{font-size:13px}.total{padding:20px 14px;min-width:90px;border-radius:20px}.total b{font-size:37px}.total span{font-size:10px}.chapters{grid-template-columns:repeat(2,minmax(0,1fr))}.card{padding:20px 17px}.controls{padding:13px}.controls select{margin-left:0;flex:1}h2{font-size:21px}h3{font-size:16px}.choice{font-size:14px;padding:10px}.masthead{padding:20px 0}.brand{font-size:12px}.top-note{font-size:10px}.list-caption{font-size:11px}.stats-row{gap:5px}.pill{padding:4px 9px;font-size:11px}}
 @media print{.masthead,.hero,.notice,.sidebar,.controls,.actions,.bookmark,.footer,.chapter-links,.list-caption{display:none}.wrap{max-width:none;padding:0}.layout{display:block}.card{break-inside:avoid;border-radius:0}.chapter-header{background:white;border:0}.feedback{display:none}}
-.bank-switch{display:flex;flex-wrap:wrap;gap:12px 22px;padding:18px 0 0;font-size:13px}.bank-switch a{white-space:nowrap}@media print{.bank-switch{display:none}}</style>
+</style>
 </head>
 <body>
-<div class="wrap"><nav class="bank-switch" aria-label="문제집 이동"><a href="../">← 문제집 선택</a><a href="../org-starred-review/">기존 별표 복습</a><a href="../org-recording-100/">녹음 기반 100제</a><a href="../../#/c/조직심리학">조직심리학 정리 ↗</a></nav>
+<div class="wrap">
   <header class="masthead"><span class="brand">조직심리학 / MIDTERM PRACTICE</span><span class="top-note">2019 족보 문항 형식 반영<br>PPT 용어 표기 · 구성요소 · 빈칸 · 진위</span></header>
   <section class="hero"><div><span class="eyebrow">6 CHAPTERS · SDT까지</span><h1>족보형 문제,<br>개념을 정확하게.</h1><p>1–5장과 6장 Self-Determination Theory까지.<br>정의, 구성요소, 이론의 주장과 연구 결과를 직접 묻습니다.</p><div class="stats-row"><span class="pill">O/X 72</span><span class="pill">객관식 170</span><span class="pill">단답형 98</span></div></div><div class="total"><b>340</b><span>STUDY QUESTIONS</span></div></section>
   <p class="notice">시험범위·형식은 사용자 안내(2026.10.23)를 기준으로 했습니다. 6장은 PPT 14쪽 SDT 연구 결과까지입니다. 실제 시험문제를 예측한 자료는 아닙니다.</p>
@@ -25,6 +25,7 @@
     <main>
       <section class="chapter-header"><span class="eyebrow" id="chapter-label"></span><h2 id="chapter-title"></h2><p id="chapter-scope"></p><nav class="chapter-links" aria-label="선택한 장 자료"><a id="print-questions" target="_blank">이 장 문제지 ↗</a><a id="print-answers" target="_blank">이 장 정답·해설집 ↗</a><a id="study-link" target="_blank" rel="noopener">기존 정리 읽기 ↗</a></nav></section>
       <p class="notice" id="chapter5-refresh-note" hidden></p>
+<div id="chapter6-cleanup" class="notice" hidden><p id="chapter6-cleanup-note"></p><button id="chapter6-restore" type="button">제외한 6장 문제 복원</button></div>
 <div class="controls"><div class="filters" aria-label="문제 형식"><button data-type="all" aria-pressed="true">전체</button><button data-type="ox" aria-pressed="false">O/X</button><button data-type="mcq" aria-pressed="false">객관식</button><button data-type="short" aria-pressed="false">단답형</button></div><label class="sr-only" for="review-mode">풀이 상태 필터</label><select id="review-mode"><option value="all">모든 문제</option><option value="unanswered">아직 안 푼 문제</option><option value="wrong">틀림 · 다시보기</option><option value="marked">표시한 문제</option><option value="chapter5-new" id="chapter5-new-option" hidden>새 5장 40문제</option></select><button id="refresh-list" class="shuffle" hidden>목록 갱신</button><button id="shuffle" class="shuffle" aria-pressed="false">순서 섞기</button></div>
       <div class="list-caption"><span id="list-count"></span><span id="chapter-score" aria-live="polite"></span></div>
       <div id="questions"></div>
@@ -80,6 +81,37 @@ if(ch5Refresh){
   $('#progress').max=BANK.counts.total;
 }
 
+
+// Chapter 6 cleanup changes the visible bank, never the answer/bookmark records.
+const ch6CleanupKey=KEY+':chapter6-starred-20261025';
+const ch6Original=BANK.chapters.find(c=>c.chapter===6)?.questions.slice()||[];
+function chapter6Cleanup(ids, attempts, saved){
+  const removed=Array.isArray(saved?.removed)?saved.removed:ids.filter(id=>!attempts[id]?.marked);
+  return {removed:removed.filter(id=>ids.includes(id)&&!attempts[id]?.marked)};
+}
+let ch6Removed=[];
+try{
+  const saved=JSON.parse(localStorage.getItem(ch6CleanupKey)||'null');
+  const selection=chapter6Cleanup(ch6Original.map(q=>q.id),records,saved);
+  if(!saved){
+    const before=Object.fromEntries(ch6Original.filter(q=>records[q.id]).map(q=>[q.id,records[q.id]]));
+    localStorage.setItem(ch6CleanupKey+':backup',JSON.stringify(before));
+    localStorage.setItem(ch6CleanupKey,JSON.stringify({...selection,createdAt:new Date().toISOString()}));
+  }
+  ch6Removed=selection.removed;
+}catch{$('#storage-warning').hidden=false;}
+const ch6Chapter=BANK.chapters.find(c=>c.chapter===6);
+if(ch6Chapter)ch6Chapter.questions=ch6Original.filter(q=>!ch6Removed.includes(q.id));
+BANK.counts={ox:0,mcq:0,short:0,total:0};
+for(const c of BANK.chapters)for(const q of c.questions){BANK.counts[q.type]++;BANK.counts.total++;}
+document.querySelector('.total b').textContent=BANK.counts.total;
+document.querySelectorAll('.stats-row .pill').forEach((n,i)=>{const t=['ox','mcq','short'][i];n.textContent=TYPE[t]+' '+BANK.counts[t];});
+$('#progress').max=BANK.counts.total;
+$('#chapter6-restore').addEventListener('click',()=>{
+  try{localStorage.setItem(ch6CleanupKey,JSON.stringify({removed:[],restoredAt:new Date().toISOString()}));location.reload();}
+  catch{$('#storage-warning').hidden=false;}
+});
+
 const query = new URLSearchParams(location.search);
 let active = Math.min(6,Math.max(1,Math.trunc(Number(query.get('chapter')))||1)), type='all', mode='all', shuffled=false, order=[];
 if(!BANK.chapters.some(c=>c.chapter===active))active=BANK.chapters[0].chapter;
@@ -102,6 +134,12 @@ function setChapter(n){
  active=n;type='all';mode='all';shuffled=false;order=[];
  $('#review-mode').value='all';$('#shuffle').setAttribute('aria-pressed','false');$('#shuffle').textContent='순서 섞기';
  chapterNav();const c=chapter();
+ $('#chapter6-cleanup').hidden=c.chapter!==6;
+ $('#chapter6-restore').hidden=!ch6Removed.length;
+ $('#chapter6-cleanup-note').textContent=ch6Removed.length
+   ? `6장 별표 없는 ${ch6Removed.length}문항 제외 · ${c.questions.length}문항 유지. 별표와 답안 기록은 보존했습니다.`+(c.chapter===6&&!c.questions.length?' 이 브라우저에서 확인된 6장 별표는 0개입니다.':'')
+   : '6장 문제를 유지하고 있습니다. 별표와 답안 기록은 보존했습니다.';
+
  const isFive=c.chapter===5;
  $('#chapter5-new-option').hidden=!isFive;
  $('#chapter5-refresh-note').hidden=!isFive;
@@ -128,7 +166,7 @@ function render(){
  document.querySelectorAll('[data-type]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.type===type)));
  const qs=visibleQuestions();$('#list-count').textContent=`${qs.length}문항 표시 · ${mode==='all'?'정답은 풀고 나서 확인':'채점 후 목록 갱신을 누르면 조건을 다시 적용합니다'}`;
  $('#refresh-list').hidden=mode==='all';
- $('#questions').innerHTML=qs.length ? qs.map(card).join('') : '<div class="empty">이 조건에 해당하는 문제가 없습니다.<br>다른 풀이 상태나 문제 형식을 선택하세요.</div>';
+ $('#questions').innerHTML=qs.length ? qs.map(card).join('') : (active===6&&!chapter().questions.length?'<div class="empty">이 브라우저에 저장된 6장 별표 문제가 없습니다.<br>필요하면 위의 복원 버튼으로 제외한 문제를 다시 볼 수 있습니다.</div>':'<div class="empty">이 조건에 해당하는 문제가 없습니다.<br>다른 풀이 상태나 문제 형식을 선택하세요.</div>');
  updateProgress();
 }
 function statusText(q){const r=record(q);return r.result===true?'✓ 맞힘':r.result===false?'다시보기':q.type==='short'&&r.revealed?'직접 채점 대기':'';}

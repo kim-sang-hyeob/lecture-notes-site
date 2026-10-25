@@ -998,4 +998,20 @@ const removed=new Set(saved?.removed||[]);
 document.querySelectorAll('article.question').forEach(card=>{const id=card.dataset.qid||card.querySelector('.chip')?.textContent; if(removed.has(id))card.remove();});
 document.querySelectorAll('.answers-table tbody tr').forEach(row=>{if(removed.has(row.firstElementChild?.textContent))row.remove();});
 }catch{}
+</script><script>
+try{
+ const key='org-exam-style-300-20261024-v1';
+ const records=JSON.parse(localStorage.getItem(key)||'{}');
+ const ids=Array.from({length:40},(_,i)=>'E6-'+String(i+1).padStart(2,'0'));
+ const migration=key+':chapter6-starred-20261025';
+ let saved=JSON.parse(localStorage.getItem(migration)||'null');
+ if(!saved){
+   saved={removed:ids.filter(id=>!records[id]?.marked),createdAt:new Date().toISOString()};
+   localStorage.setItem(migration+':backup',JSON.stringify(Object.fromEntries(ids.filter(id=>records[id]).map(id=>[id,records[id]]))));
+   localStorage.setItem(migration,JSON.stringify(saved));
+ }
+ const removed=new Set((saved.removed||[]).filter(id=>ids.includes(id)&&!records[id]?.marked));
+ document.querySelectorAll('article.question').forEach(card=>{const id=card.dataset.qid||card.querySelector('.chip')?.textContent;if(removed.has(id))card.remove();});
+ document.querySelectorAll('.answers-table tbody tr').forEach(row=>{if(removed.has(row.firstElementChild?.textContent))row.remove();});
+}catch{}
 </script></body></html>
