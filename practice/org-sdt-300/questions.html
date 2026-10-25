@@ -672,4 +672,16 @@ try{
  document.querySelectorAll('article.question').forEach(card=>{if(shouldRemove(card.dataset.qid||card.querySelector('.chip')?.textContent))card.remove();});
  document.querySelectorAll('.answers-table tbody tr').forEach(row=>{if(shouldRemove(row.firstElementChild?.textContent))row.remove();});
 }catch{}
+</script><script>
+try{
+ const KEY='org-exam-style-300-20261024-v1';
+ const easyPruneIds=["E1-24", "E1-27", "E1-29", "E2-04", "E2-40", "E2-45", "E2-46", "E2-51", "E3-03", "E3-05", "E3-43", "E3-47"];
+const easyPruneKey=KEY+':easy-prune-1-3-20261025';
+
+ const records=JSON.parse(localStorage.getItem(KEY)||'{}');
+ const restored=JSON.parse(localStorage.getItem(easyPruneKey)||'[]');
+ const remove=id=>easyPruneIds.includes(id)&&!records[id]?.marked&&!restored.includes(Number(id.slice(1,2)));
+ document.querySelectorAll('article.question').forEach(card=>{if(remove(card.dataset.qid||card.querySelector('.chip')?.textContent))card.remove();});
+ document.querySelectorAll('.answers-table tbody tr').forEach(row=>{if(remove(row.firstElementChild?.textContent))row.remove();});
+}catch{}
 </script></body></html>

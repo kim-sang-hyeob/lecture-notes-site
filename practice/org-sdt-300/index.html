@@ -28,6 +28,7 @@
 <div id="chapter6-cleanup" class="notice" hidden><p id="chapter6-cleanup-note"></p><button id="chapter6-restore" type="button">제외한 6장 문제 복원</button></div>
 <p class="notice" id="starred-reset-note" hidden></p>
 <div class="notice" id="chapter5-star-note" hidden><p id="chapter5-star-status"></p><button type="button" id="chapter5-star-restore">이번에 제외한 5장 문제 복원</button></div>
+<div class="notice" id="easy-prune-note" hidden><p id="easy-prune-status"></p><button type="button" id="easy-prune-restore">이번에 제외한 이 장 문제 복원</button></div>
 <div class="controls"><div class="filters" aria-label="문제 형식"><button data-type="all" aria-pressed="true">전체</button><button data-type="ox" aria-pressed="false">O/X</button><button data-type="mcq" aria-pressed="false">객관식</button><button data-type="short" aria-pressed="false">단답형</button></div><label class="sr-only" for="review-mode">풀이 상태 필터</label><select id="review-mode"><option value="all">모든 문제</option><option value="unanswered">아직 안 푼 문제</option><option value="wrong">틀림 · 다시보기</option><option value="marked">표시한 문제</option><option value="chapter5-new" id="chapter5-new-option" hidden>새 5장 40문제</option></select><button id="refresh-list" class="shuffle" hidden>목록 갱신</button><button id="shuffle" class="shuffle" aria-pressed="false">순서 섞기</button></div>
       <div class="list-caption"><span id="list-count"></span><span id="chapter-score" aria-live="polite"></span></div>
       <div id="questions"></div>
@@ -179,6 +180,31 @@ $('#chapter5-star-restore').addEventListener('click',()=>{
  catch{$('#storage-warning').hidden=false;}
 });
 
+const easyPruneIds=["E1-24", "E1-27", "E1-29", "E2-04", "E2-40", "E2-45", "E2-46", "E2-51", "E3-03", "E3-05", "E3-43", "E3-47"];
+const easyPruneKey=KEY+':easy-prune-1-3-20261025';
+
+function easyPruneQuestions(questions,attempts,restored){
+ return questions.filter(q=>restored||!easyPruneIds.includes(q.id)||attempts[q.id]?.marked);
+}
+
+let easyPruneRestored=[];
+try{const saved=JSON.parse(localStorage.getItem(easyPruneKey)||'[]');if(Array.isArray(saved))easyPruneRestored=saved;}catch{}
+const easyPruneCounts={};
+for(const c of BANK.chapters.filter(c=>c.chapter<=3)){
+ const before=c.questions.length;
+ c.questions=easyPruneQuestions(c.questions,records,easyPruneRestored.includes(c.chapter));
+ easyPruneCounts[c.chapter]=before-c.questions.length;
+}
+BANK.counts={ox:0,mcq:0,short:0,total:0};
+for(const c of BANK.chapters)for(const q of c.questions){BANK.counts[q.type]++;BANK.counts.total++;}
+document.querySelector('.total b').textContent=BANK.counts.total;
+document.querySelectorAll('.stats-row .pill').forEach((n,i)=>{const t=['ox','mcq','short'][i];n.textContent=TYPE[t]+' '+BANK.counts[t];});
+$('#progress').max=BANK.counts.total;
+$('#easy-prune-restore').addEventListener('click',()=>{
+ try{localStorage.setItem(easyPruneKey,JSON.stringify([...new Set([...easyPruneRestored,active])]));location.reload();}
+ catch{$('#storage-warning').hidden=false;}
+});
+
 const query = new URLSearchParams(location.search);
 let active = Math.min(6,Math.max(1,Math.trunc(Number(query.get('chapter')))||1)), type='all', mode='all', shuffled=false, order=[];
 if(!BANK.chapters.some(c=>c.chapter===active))active=BANK.chapters[0].chapter;
@@ -201,6 +227,10 @@ function setChapter(n){
  active=n;type='all';mode='all';shuffled=false;order=[];
  $('#review-mode').value='all';$('#shuffle').setAttribute('aria-pressed','false');$('#shuffle').textContent='순서 섞기';
  chapterNav();const c=chapter();
+ $('#easy-prune-note').hidden=c.chapter>3;
+ $('#easy-prune-restore').hidden=!easyPruneCounts[c.chapter];
+ if(c.chapter<=3)$('#easy-prune-status').textContent=`단순·중복 문항 ${easyPruneCounts[c.chapter]||0}개 제외 · ${c.questions.length}문항 유지. 별표 문제와 풀이 기록은 보존했습니다.`;
+
  $('#starred-reset-note').hidden=![5,6].includes(c.chapter)||!starredResetSummary;
  if(starredResetSummary)$('#starred-reset-note').textContent=starredResetSummary.count
    ? `5·6장 별표 ${starredResetSummary.count}문항의 답안을 한 번 초기화했습니다. 별표는 유지되며, 다시 푼 답안은 저장됩니다.`
