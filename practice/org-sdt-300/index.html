@@ -27,6 +27,7 @@
       <p class="notice" id="chapter5-refresh-note" hidden></p>
 <div id="chapter6-cleanup" class="notice" hidden><p id="chapter6-cleanup-note"></p><button id="chapter6-restore" type="button">제외한 6장 문제 복원</button></div>
 <p class="notice" id="starred-reset-note" hidden></p>
+<div class="notice" id="chapter5-star-note" hidden><p id="chapter5-star-status"></p><button type="button" id="chapter5-star-restore">이번에 제외한 5장 문제 복원</button></div>
 <div class="controls"><div class="filters" aria-label="문제 형식"><button data-type="all" aria-pressed="true">전체</button><button data-type="ox" aria-pressed="false">O/X</button><button data-type="mcq" aria-pressed="false">객관식</button><button data-type="short" aria-pressed="false">단답형</button></div><label class="sr-only" for="review-mode">풀이 상태 필터</label><select id="review-mode"><option value="all">모든 문제</option><option value="unanswered">아직 안 푼 문제</option><option value="wrong">틀림 · 다시보기</option><option value="marked">표시한 문제</option><option value="chapter5-new" id="chapter5-new-option" hidden>새 5장 40문제</option></select><button id="refresh-list" class="shuffle" hidden>목록 갱신</button><button id="shuffle" class="shuffle" aria-pressed="false">순서 섞기</button></div>
       <div class="list-caption"><span id="list-count"></span><span id="chapter-score" aria-live="polite"></span></div>
       <div id="questions"></div>
@@ -141,6 +142,43 @@ try{
   }
 }catch{$('#storage-warning').hidden=false;}
 
+
+const ch5StarKey=KEY+':chapter5-starred-reset-20261025';
+const ch5StarChapter=BANK.chapters.find(c=>c.chapter===5);
+const ch5StarOriginal=ch5StarChapter.questions.slice();
+function chapter5StarSelection(questions,attempts,saved){
+ const next={...attempts},before={};
+ const ids=questions.map(q=>q.id);
+ const removed=Array.isArray(saved?.removed)?saved.removed:ids.filter(id=>!attempts[id]?.marked);
+ if(!saved)for(const q of questions){const r=attempts[q.id];if(r?.marked){
+   before[q.id]={...r};
+   next[q.id]={...r,selected:null,text:'',result:null,revealed:false,content_revision:r.content_revision||q.content_revision||CONTENT_REVISION};
+ }}
+ return {next,before,removed:removed.filter(id=>ids.includes(id)&&!attempts[id]?.marked)};
+}
+let ch5StarRemoved=[],ch5StarApplied=false;
+try{
+ const saved=JSON.parse(localStorage.getItem(ch5StarKey)||'null');
+ const selection=chapter5StarSelection(ch5StarOriginal,records,saved);
+ if(!saved){
+   localStorage.setItem(ch5StarKey+':backup',JSON.stringify(Object.fromEntries(ch5StarOriginal.filter(q=>records[q.id]).map(q=>[q.id,records[q.id]]))));
+   localStorage.setItem(KEY,JSON.stringify(selection.next));
+   records=selection.next;
+   localStorage.setItem(ch5StarKey,JSON.stringify({removed:selection.removed,resetCount:Object.keys(selection.before).length,createdAt:new Date().toISOString()}));
+ }
+ ch5StarRemoved=selection.removed;ch5StarApplied=true;
+}catch{$('#storage-warning').hidden=false;}
+ch5StarChapter.questions=ch5StarOriginal.filter(q=>!ch5StarRemoved.includes(q.id));
+BANK.counts={ox:0,mcq:0,short:0,total:0};
+for(const c of BANK.chapters)for(const q of c.questions){BANK.counts[q.type]++;BANK.counts.total++;}
+document.querySelector('.total b').textContent=BANK.counts.total;
+document.querySelectorAll('.stats-row .pill').forEach((n,i)=>{const t=['ox','mcq','short'][i];n.textContent=TYPE[t]+' '+BANK.counts[t];});
+$('#progress').max=BANK.counts.total;
+$('#chapter5-star-restore').addEventListener('click',()=>{
+ try{localStorage.setItem(ch5StarKey,JSON.stringify({removed:[],restoredAt:new Date().toISOString()}));location.reload();}
+ catch{$('#storage-warning').hidden=false;}
+});
+
 const query = new URLSearchParams(location.search);
 let active = Math.min(6,Math.max(1,Math.trunc(Number(query.get('chapter')))||1)), type='all', mode='all', shuffled=false, order=[];
 if(!BANK.chapters.some(c=>c.chapter===active))active=BANK.chapters[0].chapter;
@@ -180,6 +218,15 @@ function setChapter(n){
  if(isFive){const oldCount=c.questions.filter(q=>ch5Refresh.original_ids.includes(q.id)).length;
  $('#chapter5-refresh-note').textContent=`기존 ${oldCount}문항 유지 + 새 40문항 · 풀이 완료·별표 없음 ${ch5Removed.length}문항 제외. 기존 미완료·별표와 답안은 유지했습니다. 풀이 상태 필터에서 ‘새 5장 40문제’를 선택할 수 있습니다.`;}
 
+ 
+ $('#chapter5-star-note').hidden=c.chapter!==5||!ch5StarApplied;
+ $('#chapter5-star-restore').hidden=!ch5StarRemoved.length;
+ if(c.chapter===5&&ch5StarApplied){
+   $('#chapter5-refresh-note').hidden=true;
+   $('#starred-reset-note').hidden=true;
+   $('#chapter5-new-option').textContent='새 5장 중 남긴 문제';
+   $('#chapter5-star-status').textContent=`5장 ${ch5StarRemoved.length}문항 제외 · ${c.questions.length}문항 유지. 별표 문제의 답안은 한 번 초기화했으며, 다시 푼 답은 저장됩니다.`+(!c.questions.length?' 이 브라우저의 5장 별표는 0개입니다.':'');
+ }
  $('#chapter-label').textContent=`CHAPTER 0${c.chapter} / ${c.questions.length} QUESTIONS`;
  $('#chapter-title').textContent=c.title;
  $('#chapter-scope').textContent=`${c.scope} · O/X ${c.questions.filter(q=>q.type==='ox').length} · 객관식 ${c.questions.filter(q=>q.type==='mcq').length} · 단답형 ${c.questions.filter(q=>q.type==='short').length}`;
@@ -200,7 +247,7 @@ function render(){
  document.querySelectorAll('[data-type]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.type===type)));
  const qs=visibleQuestions();$('#list-count').textContent=`${qs.length}문항 표시 · ${mode==='all'?'정답은 풀고 나서 확인':'채점 후 목록 갱신을 누르면 조건을 다시 적용합니다'}`;
  $('#refresh-list').hidden=mode==='all';
- $('#questions').innerHTML=qs.length ? qs.map(card).join('') : (active===6&&!chapter().questions.length?'<div class="empty">이 브라우저에 저장된 6장 별표 문제가 없습니다.<br>필요하면 위의 복원 버튼으로 제외한 문제를 다시 볼 수 있습니다.</div>':'<div class="empty">이 조건에 해당하는 문제가 없습니다.<br>다른 풀이 상태나 문제 형식을 선택하세요.</div>');
+ $('#questions').innerHTML=qs.length ? qs.map(card).join('') : ([5,6].includes(active)&&!chapter().questions.length?`<div class="empty">이 브라우저에 저장된 ${active}장 별표 문제가 없습니다.<br>필요하면 위의 복원 버튼으로 제외한 문제를 다시 볼 수 있습니다.</div>`:'<div class="empty">이 조건에 해당하는 문제가 없습니다.<br>다른 풀이 상태나 문제 형식을 선택하세요.</div>');
  updateProgress();
 }
 function statusText(q){const r=record(q);return r.result===true?'✓ 맞힘':r.result===false?'다시보기':q.type==='short'&&r.revealed?'직접 채점 대기':'';}
