@@ -130,4 +130,14 @@ const easyPruneKey=KEY+':easy-prune-1-3-20261025';
  document.querySelectorAll('article.question').forEach(card=>{if(remove(card.dataset.qid||card.querySelector('.chip')?.textContent))card.remove();});
  document.querySelectorAll('.answers-table tbody tr').forEach(row=>{if(remove(row.firstElementChild?.textContent))row.remove();});
 }catch{}
+</script><script>
+try{
+ const key='org-exam-style-300-20261024-v1';
+ const records=JSON.parse(localStorage.getItem(key)||'{}');
+ const saved=JSON.parse(localStorage.getItem(key+':review-trim-1-4-20261025-v2')||'null');
+ const excluded=new Set(Object.entries(saved?.removed||{}).filter(([c])=>!(saved.restored||[]).includes(Number(c))).flatMap(([,ids])=>ids));
+ const remove=id=>excluded.has(id)&&!records[id]?.marked;
+ document.querySelectorAll('article.question').forEach(card=>{if(remove(card.dataset.qid||card.querySelector('.chip')?.textContent))card.remove();});
+ document.querySelectorAll('.answers-table tbody tr').forEach(row=>{if(remove(row.firstElementChild?.textContent))row.remove();});
+}catch{}
 </script></body></html>

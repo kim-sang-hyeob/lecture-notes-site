@@ -136,4 +136,14 @@ const previousAnswers=JSON.parse(document.getElementById('previous-answers').tex
 document.querySelectorAll('template[data-previous]').forEach(t=>{const id=t.dataset.previous;if(keepPreviousVersion(previousRecords[id])){const current=document.querySelector('[data-qid="'+id+'"]');if(current)current.replaceWith(t.content.cloneNode(true));}});
 document.querySelectorAll('.answers-table tbody tr').forEach(row=>{const id=row.firstElementChild.textContent;if(previousAnswers[id]&&keepPreviousVersion(previousRecords[id]))row.children[1].textContent=previousAnswers[id];});
 document.documentElement.classList.remove('selecting-versions');
+</script><script>
+try{
+ const key='org-exam-style-300-20261024-v1';
+ const records=JSON.parse(localStorage.getItem(key)||'{}');
+ const saved=JSON.parse(localStorage.getItem(key+':review-trim-1-4-20261025-v2')||'null');
+ const excluded=new Set(Object.entries(saved?.removed||{}).filter(([c])=>!(saved.restored||[]).includes(Number(c))).flatMap(([,ids])=>ids));
+ const remove=id=>excluded.has(id)&&!records[id]?.marked;
+ document.querySelectorAll('article.question').forEach(card=>{if(remove(card.dataset.qid||card.querySelector('.chip')?.textContent))card.remove();});
+ document.querySelectorAll('.answers-table tbody tr').forEach(row=>{if(remove(row.firstElementChild?.textContent))row.remove();});
+}catch{}
 </script></body></html>
