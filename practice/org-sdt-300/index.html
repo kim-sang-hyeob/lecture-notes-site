@@ -218,7 +218,7 @@ function setChapter(n){
  if(isFive){const oldCount=c.questions.filter(q=>ch5Refresh.original_ids.includes(q.id)).length;
  $('#chapter5-refresh-note').textContent=`기존 ${oldCount}문항 유지 + 새 40문항 · 풀이 완료·별표 없음 ${ch5Removed.length}문항 제외. 기존 미완료·별표와 답안은 유지했습니다. 풀이 상태 필터에서 ‘새 5장 40문제’를 선택할 수 있습니다.`;}
 
- 
+
  $('#chapter5-star-note').hidden=c.chapter!==5||!ch5StarApplied;
  $('#chapter5-star-restore').hidden=!ch5StarRemoved.length;
  if(c.chapter===5&&ch5StarApplied){
