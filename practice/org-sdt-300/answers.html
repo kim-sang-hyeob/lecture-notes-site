@@ -1054,4 +1054,13 @@ try{
  document.querySelectorAll('article.question').forEach(card=>{if(remove(card.dataset.qid||card.querySelector('.chip')?.textContent))card.remove();});
  document.querySelectorAll('.answers-table tbody tr').forEach(row=>{if(remove(row.firstElementChild?.textContent))row.remove();});
 }catch{}
+</script><script>
+try{
+ const key='org-exam-style-300-20261024-v1';
+ const records=JSON.parse(localStorage.getItem(key)||'{}');
+ const saved=JSON.parse(localStorage.getItem(key+':chapter2-starred-reset-20261025')||'null');
+ const remove=id=>/^E2-\d{2}$/.test(id)&&!records[id]?.marked&&(!saved||saved.removed?.includes(id));
+ document.querySelectorAll('article.question').forEach(card=>{if(remove(card.dataset.qid||card.querySelector('.chip')?.textContent))card.remove();});
+ document.querySelectorAll('.answers-table tbody tr').forEach(row=>{if(remove(row.firstElementChild?.textContent))row.remove();});
+}catch{}
 </script></body></html>
